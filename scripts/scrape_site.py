@@ -12,7 +12,7 @@ URLS = [
 
 if __name__ == "__main__":
     conn = init_db()
-    from url in URLS:
+    for url in URLS:
          page = extract_page(url)
          upsert_page(conn, page)
          print(f"Saved: {page['url']}")
