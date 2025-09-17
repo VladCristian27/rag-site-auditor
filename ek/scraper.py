@@ -1,12 +1,44 @@
-### Scraper.py
-### Version 1.0.0 initial blueprint
+### ek/scraper.py
+### Version 1.1.0 
+
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
+from urllib.robotparser import RobotFileParser
+from requests.adapters import HTTPAdapter
+from urllib.util.retry import Retry
 from datetime import datetime
 import json
+import time
+import logging
 
+# polite default UA - change this to your project URL or contact info
 HEADERS = {"User-Agent": "RAG-Auditor/1.0 (+https://yourdomain.example)"}
+DEFAULT_DELAY = 1.0 # seconds if robots.txt doesn't specify crawl-delay
+
+# cache RobotFileParser instances per domain
+_robot_parsers = {}
+
+def make_session(retries=3, backoff_factor=0.5, status_forcelist=(429,500,502,503,504)):
+    """Create a requests.Session with retry/backoff behaviour."""
+    sess = requests.Session()
+    sess.headers.update(HEADERS)
+
+    retry = Retry(
+        total=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+        allowed_methods=frozenset(["GET", "HEAD"])
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    sess.mount("https://", adapter)
+    sess.mount("http://", adapter)
+    return sess
+
+def _get_domain_root(url):
+    """helper function-normalize domains for robots.txt and crawl delay."""
+    p = urlparse(url)
+    return f"{p.scheme}://{p.netloc}"
 
 def extract_page(url: str) -> dict:
     r = requests.get(url, headers=HEADERS, timeout=12)
