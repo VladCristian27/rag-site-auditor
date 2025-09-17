@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 from requests.adapters import HTTPAdapter
-from urllib.util.retry import Retry
+from urllib3.util.retry import Retry
 from datetime import datetime
 import json
 import time
