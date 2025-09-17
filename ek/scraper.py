@@ -2,7 +2,7 @@
 ### Version 1.0.0 initial blueprint
 import requests
 from bs4 import BeautifulSoup
-from urlib.parse import urljoin
+from urllib.parse import urljoin
 from datetime import datetime
 import json
 
