@@ -46,4 +46,4 @@ def upsert_page(conn, page: dict):
         json.dumps(page["internal_links"]),
         page["scraped_at"]
     ))
-    conn.comit()
+    conn.commit()
