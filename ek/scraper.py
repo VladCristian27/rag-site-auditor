@@ -1,5 +1,5 @@
 ### ek/scraper.py
-### Version 1.2.1 
+### Version 1.2.2 
 
 import requests
 from bs4 import BeautifulSoup
@@ -59,7 +59,7 @@ def get_robot_parser(url):
     except Exception as e:
         logging.debug(f"[robots] failed to read {robots_url}:{e}")
         """ store None to avoid repeated failing reads; None = "no robots info, allow by default"""
-        _robot_parser[domain_root] = None
+        _robot_parsers[domain_root] = None
         return None
 
 def can_fetch(url, user_agent=HEADERS["User-Agent"]):
@@ -80,10 +80,40 @@ def crawl_delay(url, user_agent=HEADERS["User-Agent"]):
     except Exception:
         return None
 
-def extract_page(url: str) -> dict:
-    r = requests.get(url, headers=HEADERS, timeout=12)
-    r.raise_for_status()
+def safe_get(session, url, timeout=12):
+    """
+    Fetch URL using session, but first check robots.txt.
+    returns requests.Response or None if blocked/failed.
+    """
+    if not can_fetch(url):
+        logging.info(f"[robots] blocked by robots.txt: {url}")
+        return None
+
+    try:
+        r = session.get(url, timeout=timeout)
+        r.raise_for_status()
+        return r
+    except requests.RequestException as e:
+        logging.warning(f"[fetch] {url} failed: {e}")
+        return None
+
+def extract_page(session, url):
+    """
+    Scrape page using provided session.Returns strucutred dict.
+    If fetch fails, returns dict with error key.
+    """
+    r = safe_get(session, url)
+    if r is None:
+        return {"url": url,
+                "error": "fetch_failed_or_blocked",
+                "scraped_at": datetime.utcnow().isoformat()
+               }
+        
     soup = BeautifulSoup(r.text, "html.parser")
+
+    #remove scripts/styles to avoid noise
+    for tag in soup(["script", "style", "noscript"]):
+        tag.decompose()
 
     # Title extraction
     title = (soup.title.string if soup.title else "").strip()
@@ -97,7 +127,7 @@ def extract_page(url: str) -> dict:
 
     # Text content // for long pages consider capping length (text[:20000]) or chunking
     paragraphs = [p.get_text(" ", strip=True)for p in soup.find_all("p")] 
-    text = "\n".join(paragraphs)
+    text = "\n".join(paragraphs)[:20000] # cap to avoid enormous blobs
 
     # Images
     images = []
@@ -106,7 +136,15 @@ def extract_page(url: str) -> dict:
         images.append({"src": urljoin(url, src), "alt": img.get("alt", "")})
 
     # Links
-    links = [urljoin(url, a["href"]) for a in soup.find_all("a", href=True)]
+    
+    links = []
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        #normalize to ablosute and skip fragments/javascript/mailto for now
+        if href.startswith("javascript:") or href.startswith("mailto:") or href.startswith("tel:"):
+            continue
+        abs_link = urljoin(url, href)
+        links.append(abs_link)
 
     return {
         "url": url,
@@ -119,7 +157,12 @@ def extract_page(url: str) -> dict:
         "scraped_at": datetime.utcnow().isoformat()
     }
 
-if __name__ == "__main__":
-    test_url = "https://example.com"
-    data = extract_page(test_url)
-    print(json.dumps(data, indent=2))
+def polite_sleep(url):
+    """Sleep respecting crawl-delay for URLs domain (or DEFAULT_DELAY)"""
+    delay = crawl_delay(url)
+    if delay is None:
+        delay = DEFAULT_DELAY
+    try:
+        time.sleep(float(delay))
+    except Exception:
+        time.sleep(DEFAULT_DELAY)
