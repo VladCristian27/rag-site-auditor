@@ -20,7 +20,7 @@ def init_db(path="data/site_pages.sqlite"):
         scraped_at TEXT
     );
     """)
-    conn.comit()
+    conn.commit()
     return conn
 
 def upsert_page(conn, page: dict):
