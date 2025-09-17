@@ -1,5 +1,5 @@
 ### ek/scraper.py
-### Version 1.1.0 
+### Version 1.2.1 
 
 import requests
 from bs4 import BeautifulSoup
@@ -39,6 +39,46 @@ def _get_domain_root(url):
     """helper function-normalize domains for robots.txt and crawl delay."""
     p = urlparse(url)
     return f"{p.scheme}://{p.netloc}"
+
+def get_robot_parser(url):
+    """
+    return a RobotFileParser for the domain (cached).
+    if fetching fails, cache None and allow crawling by default.
+    """
+    domain_root = _get_domain_root(url)
+    if domain_root in _robot_parsers:
+        return _robot_parsers[domain_root]
+
+    robots_url = urljoin(domain_root, "/robots.txt")
+    rp = RobotFileParser()
+    try:
+        rp.set_url(robots_url)
+        rp.read() #network call to feth robots.txt
+        _robot_parsers[domain_root] = rp
+        return rp
+    except Exception as e:
+        logging.debug(f"[robots] failed to read {robots_url}:{e}")
+        """ store None to avoid repeated failing reads; None = "no robots info, allow by default"""
+        _robot_parser[domain_root] = None
+        return None
+
+def can_fetch(url, user_agent=HEADERS["User-Agent"]):
+    rp = get_robot_parser(url)
+    if rp is None:
+        return True
+    try:
+        return rp.can_fetch(user_agent, url)
+    except Exception:
+        return True
+
+def crawl_delay(url, user_agent=HEADERS["User-Agent"]):
+    rp = get_robot_parser(url)
+    if rp is None:
+        return None
+    try:
+        return rp.crawl_delay(user_agent)
+    except Exception:
+        return None
 
 def extract_page(url: str) -> dict:
     r = requests.get(url, headers=HEADERS, timeout=12)
