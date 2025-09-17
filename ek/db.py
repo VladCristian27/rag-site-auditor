@@ -5,7 +5,7 @@
 import sqlite3, json
 
 def init_db(path="data/site_pages.sqlite"):
-    conn = sqlite.connect(path)
+    conn = sqlite3.connect(path)
     cur = conn.cursor()
     cur.execute("""
     CREATE TABLE IF NOT EXISTS pages (
