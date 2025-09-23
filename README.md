@@ -29,19 +29,19 @@ Audit and analyze websites using **Retrieval-Augmented Generation (RAG)** with F
 1. **Scrape a site**
 
    ```bash
-   python scripts/scrape_site.py --start https://example.com --db site_pages.sqlite
+   python -m scripts.scrape_site https://example.com
    ```
 
 2. **Generate embeddings**
 
    ```bash
-   python scripts/embed_pages.py --db site_pages.sqlite --out data/faiss_index
+   python -m scripts.embed_pages
    ```
 
 3. **Run an audit query**
 
    ```bash
-   python scripts/audit_site.py --db site_pages.sqlite --faiss data/faiss_index --model openai
+   python -m scripts.audit_site "What is this site about?" local
    ```
 
 ---
