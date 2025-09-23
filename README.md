@@ -12,6 +12,10 @@ Audit and analyze websites using **Retrieval-Augmented Generation (RAG)** with F
 * **Store embeddings** in a FAISS vector index (`data/faiss_index`).
 * **Query with RAG** using OpenAI or Hugging Face models (Falcon, Mistral, etc.).
 * Runs on **CPU or GPU (CUDA)**.
+* **Models:**
+   
+   * Local: HuggingFace pipeline (Falcon-7B-Instruct, Mistral-7B-Instruct, etc.)
+   * Remote: OpenAI (gpt-4o-mini, gpt-3.5-turbo, etc.)
 * **Simple modular scripts:**
 
   * `scripts/scrape_site.py` — scrape a site into SQLite.
@@ -25,19 +29,19 @@ Audit and analyze websites using **Retrieval-Augmented Generation (RAG)** with F
 1. **Scrape a site**
 
    ```bash
-   python -m scripts.scrape_site https://example.com
+   python scripts/scrape_site.py --start https://example.com --db site_pages.sqlite
    ```
 
 2. **Generate embeddings**
 
    ```bash
-   python -m scripts.embed_pages
+   python scripts/embed_pages.py --db site_pages.sqlite --out data/faiss_index
    ```
 
 3. **Run an audit query**
 
    ```bash
-     python -m scripts.audit_site "What is this site about?" local
+   python scripts/audit_site.py --db site_pages.sqlite --faiss data/faiss_index --model openai
    ```
 
 ---
